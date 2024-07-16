@@ -3,10 +3,10 @@ import os
 import torch
 import torch.nn as nn
 
-from ..dataset.ava import AVA_Dataset
-from ..dataset.transforms import Augmentation, BaseTransform
+from action_detection.yowov2.dataset.ava import AVA_Dataset
+from action_detection.yowov2.dataset.transforms import Augmentation, BaseTransform
 
-from ..evaluator.ava_evaluator import AVA_Evaluator
+from action_detection.yowov2.evaluator.ava_evaluator import AVA_Evaluator
 
 
 def build_dataset(d_cfg, args, is_train=False):
@@ -140,7 +140,7 @@ def load_weight(model, path_to_ckpt=None):
         print('No trained weight ..')
         return model
         
-    checkpoint = torch.load(path_to_ckpt, map_location='cpu')
+    checkpoint = torch.load(path_to_ckpt, map_location='cuda')
     # checkpoint state dict
     checkpoint_state_dict = checkpoint.pop("model")
     # model state dict

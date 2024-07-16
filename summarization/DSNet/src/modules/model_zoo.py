@@ -1,5 +1,5 @@
-from anchor_based.dsnet import DSNet
-from anchor_free.dsnet_af import DSNetAF
+from summarization.DSNet.src.anchor_based.dsnet import DSNet
+from summarization.DSNet.src.anchor_free.dsnet_af import DSNetAF
 
 
 def get_anchor_based(base_model, num_feature, num_hidden, anchor_scales,

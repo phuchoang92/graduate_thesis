@@ -1,8 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from src.kts.cpd_auto import cpd_auto
-from src.kts.cpd_nonlin import cpd_nonlin
+from summarization.DSNet.src.kts.cpd_auto import cpd_auto
+from summarization.DSNet.src.kts.cpd_nonlin import cpd_nonlin
 
 
 def gen_data(n, m, d=1):

@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from ...utils.box_ops import *
+from action_detection.yowov2.utils.box_ops import *
 
 
 

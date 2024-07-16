@@ -40,7 +40,7 @@ def build_yowo(args,
         # keep training       
         if resume is not None:
             print('keep training: ', resume)
-            checkpoint = torch.load(resume, map_location='cpu')
+            checkpoint = torch.load(resume, map_location='cuda')
             # checkpoint state dict
             checkpoint_state_dict = checkpoint.pop("model")
             model.load_state_dict(checkpoint_state_dict)

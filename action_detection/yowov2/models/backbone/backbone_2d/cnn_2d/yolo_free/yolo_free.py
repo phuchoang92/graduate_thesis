@@ -189,7 +189,7 @@ def build_yolo_free(model_name='yolo_free_large', pretrained=False):
             print('Loading 2D backbone pretrained weight: {}'.format(model_name.upper()))
 
             # state dict
-            checkpoint = load_state_dict_from_url(url, map_location='cpu')
+            checkpoint = load_state_dict_from_url(url, map_location='cuda')
             checkpoint_state_dict = checkpoint.pop('model')
 
             # model state dict

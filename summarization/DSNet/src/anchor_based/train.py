@@ -4,11 +4,11 @@ import numpy as np
 import torch
 from torch import nn
 
-from src.anchor_based import anchor_helper
-from src.anchor_based.dsnet import DSNet
-from src.anchor_based.losses import calc_cls_loss, calc_loc_loss
-from src.evaluate import evaluate
-from src.helpers import data_helper, vsumm_helper, bbox_helper
+from summarization.DSNet.src.anchor_based import anchor_helper
+from summarization.DSNet.src.anchor_based.dsnet import DSNet
+from summarization.DSNet.src.anchor_based.losses import calc_cls_loss, calc_loc_loss
+from summarization.DSNet.src.evaluate import evaluate
+from summarization.DSNet.src.helpers import data_helper, vsumm_helper, bbox_helper
 
 logger = logging.getLogger()
 

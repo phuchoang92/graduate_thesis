@@ -32,8 +32,9 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
 
     # model type
-    parser.add_argument('model', type=str,
-                        choices=('anchor-based', 'anchor-free'))
+    parser.add_argument('model', type=str, nargs='?', default='anchor-based',
+                        choices=('anchor-based', 'anchor-free'),
+                        help='Type of model to use: anchor-based or anchor-free')
 
     # training & evaluation
     parser.add_argument('--device', type=str, default='cuda',

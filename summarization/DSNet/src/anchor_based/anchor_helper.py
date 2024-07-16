@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 import numpy as np
 
-from src.helpers import bbox_helper
+from summarization.DSNet.src.helpers import bbox_helper
 
 
 def get_anchors(seq_len: int, scales: List[int]) -> np.ndarray:

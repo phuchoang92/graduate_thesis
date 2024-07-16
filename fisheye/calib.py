@@ -1,33 +1,34 @@
 import os
 from glob import glob
-from multiprocessing import Pool
 
 import numpy as np
 from cv2 import (
-  COLOR_GRAY2BGR,
-  IMREAD_GRAYSCALE,
-  NORM_L2,
-  TERM_CRITERIA_COUNT,
-  TERM_CRITERIA_EPS,
-  calibrateCamera,
-  cornerSubPix,
-  cvtColor,
-  drawChessboardCorners,
-  findChessboardCorners,
-  imread,
-  imwrite,
-  norm,
-  projectPoints,
-  resize,
+    COLOR_GRAY2BGR,
+    IMREAD_GRAYSCALE,
+    NORM_L2,
+    TERM_CRITERIA_COUNT,
+    TERM_CRITERIA_EPS,
+    calibrateCamera,
+    cornerSubPix,
+    cvtColor,
+    drawChessboardCorners,
+    findChessboardCorners,
+    imread,
+    imwrite,
+    norm,
+    projectPoints,
+    resize,
+    circle
 )
 
-threads_num = 12
-img_mask = 'frames/*.jpg'
-vis_dir = './debug'
-pattern_size = (5, 8)
+# threads_num = 12
+# img_mask = 'frames/distort/*.jpg'
+img_mask = 'D:/datasets/frames/video/*.jpg'
+vis_dir = r'C:/Users/chang/Downloads/thesis_demo\debug\debug2'
+pattern_size = (6, 8)
 img_names = glob(img_mask)
 
-found_chessboards = glob('debug/*.jpg')
+found_chessboards = glob('D:/datasets/frames/video/*.jpg')
 found_chessboards = [i.replace('debug', 'frames') for i in found_chessboards]
 img_names = [i for i in img_names if i in found_chessboards]
 
@@ -39,75 +40,80 @@ print('h =', h, '\nw =', w)
 
 
 def splitfn(fn):
-  path, fn = os.path.split(fn)
-  name, ext = os.path.splitext(fn)
-  return path, name, ext
+    path, fn = os.path.split(fn)
+    name, ext = os.path.splitext(fn)
+    return path, name, ext
 
 
 def get_corners(fn):
-  img = imread(fn, IMREAD_GRAYSCALE)
-  img = resize(img, (w, h))
-  if img is None:
-    print('Failed to load', fn)
-    return None
-  found, corners = findChessboardCorners(img, pattern_size)
-  if found:
-    term = (TERM_CRITERIA_EPS + TERM_CRITERIA_COUNT, 30, 0.1)
-    cornerSubPix(img, corners, (5, 5), (-1, -1), term)
-    if vis_dir:
-      vis = cvtColor(img, COLOR_GRAY2BGR)
-      drawChessboardCorners(vis, pattern_size, corners, found)
-      name = splitfn(fn)[1]
-      outfile = os.path.join(vis_dir, f'{name}.jpg')
-      imwrite(outfile, vis)
-  if not found:
-    print(fn)
-    return
-  print(fn, 'OK')
-  return corners.reshape(-1, 2)
+
+    img = imread(fn, IMREAD_GRAYSCALE)
+    img = resize(img, (w, h))
+    if img is None:
+        print('Failed to load', fn)
+        return None
+    found, corners = findChessboardCorners(img, pattern_size)
+    if found:
+        term = (TERM_CRITERIA_EPS + TERM_CRITERIA_COUNT, 30, 0.1)
+        cornerSubPix(img, corners, (11, 11), (-1, -1), term)
+        if vis_dir:
+            vis = cvtColor(img, COLOR_GRAY2BGR)
+            drawChessboardCorners(vis, pattern_size, corners, found)
+            name = splitfn(fn)[1]
+            outfile = os.path.join(vis_dir, f'{name}.jpg')
+            imwrite(outfile, vis)
+    if not found:
+        print(fn)
+        return
+    print(fn, 'OK')
+    return corners.reshape(-1, 2)
 
 
 # chessboards = [calib(x) for x in img_names]
-pool = Pool(threads_num)
-img_points = pool.map(get_corners, img_names)
-img_points = [x for x in img_points if x is not None]
-print(len(img_points), 'chessboards found')
-
 
 def calibrate(img_points: list[np.ndarray]):
-  total = len(img_points)
+    total = len(img_points)
 
-  rms, cam_mtx, dist_coefs, rvecs, tvecs = calibrateCamera(
-    [obj_point] * total,
-    img_points,
-    (w, h),
-    None,
-    None,
-  )
-  print('\nRMS:', rms)
+    print("Total image points: " + str(total))
 
-  errors = np.array([])
-  for i in range(total):
-    imgpoints2, _ = projectPoints(obj_point, rvecs[i], tvecs[i], cam_mtx, dist_coefs)
-    error = norm(img_points[i], np.squeeze(imgpoints2), NORM_L2) / len(imgpoints2)
-    errors = np.append(errors, error)
+    rms, cam_mtx, dist_coefs, rvecs, tvecs = calibrateCamera(
+        [obj_point] * total,
+        img_points,
+        (w, h),
+        None,
+        None,
+    )
+    print('\nRMS:', rms)
 
-  print(errors)
-  print(f'Min error: {errors.min()}')
-  print(f'Max error: {errors.max()}')
-  print(f'Mean error: {errors.mean()}')
+    errors = np.array([])
+    for i in range(total):
+        imgpoints2, _ = projectPoints(obj_point, rvecs[i], tvecs[i], cam_mtx, dist_coefs)
+        error = norm(img_points[i], np.squeeze(imgpoints2), NORM_L2) / len(imgpoints2)
+        errors = np.append(errors, error)
 
-  return cam_mtx, dist_coefs, errors
+    print(errors)
+    print(f'Min error: {errors.min()}')
+    print(f'Max error: {errors.max()}')
+    print(f'Mean error: {errors.mean()}')
+
+    return cam_mtx, dist_coefs, errors
 
 
-_, _, errors = calibrate(img_points)
+if __name__ == '__main__':
+    img_points = []
+    for img_name in img_names:
+        img_points.append(get_corners(img_name))
+    img_points = [x for x in img_points if x is not None]
+    print(len(img_points), 'chessboards found')
 
-new_img_points = [img_points[i] for i in np.where(errors < 2)[0]]
+    _, _, errors = calibrate(img_points)
 
-cam_mtx, dist_coefs, _ = calibrate(new_img_points)
+    new_img_points = [img_points[i] for i in np.where(errors < 2)[0]]
 
-print('camera matrix:\n', cam_mtx)
-print('distortion coefficients: ', dist_coefs)
+    cam_mtx, dist_coefs, _ = calibrate(new_img_points)
 
-np.save('cam_mtx.npy', cam_mtx)
-np.save('dist_coefs.npy', dist_coefs)
+    print('camera matrix:\n', cam_mtx)
+    print('distortion coefficients: ', dist_coefs)
+
+    np.save('configs/cam_mtx.npy', cam_mtx)
+    np.save('configs/dist_coefs.npy', dist_coefs)

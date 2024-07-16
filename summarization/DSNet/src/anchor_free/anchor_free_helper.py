@@ -1,6 +1,6 @@
 import numpy as np
 
-from helpers import bbox_helper
+from summarization.DSNet.src.helpers import bbox_helper
 
 
 def get_loc_label(target: np.ndarray) -> np.ndarray:

@@ -4,16 +4,23 @@ import os
 import time
 import numpy as np
 import torch
-import imageio
 from PIL import Image
 
 from dataset.transforms import BaseTransform
 from utils.misc import load_weight
-from utils.box_ops import rescale_bboxes
-from utils.vis_tools import vis_detection
 from config import build_dataset_config, build_model_config
 from models import build_model
 
+
+color_dict = {
+    0: (255, 255, 0),
+    1: (0, 255, 255),
+    2: (255, 0, 0),
+    3: (0, 0, 255),
+    4: (255, 0, 255),
+    5: (0, 128, 0),
+    6: (128, 128, 0),
+}
 
 def parse_args():
     parser = argparse.ArgumentParser(description='YOWOv2 Demo')
@@ -63,12 +70,7 @@ def multi_hot_vis(args, frame, out_bboxes, orig_w, orig_h, class_names, act_pose
     # visualize detection results
     for bbox in out_bboxes:
         x1, y1, x2, y2 = bbox[:4]
-        if act_pose:
-            # only show 14 poses of AVA.
-            cls_conf = bbox[5:5 + 14]
-        else:
-            # show all actions of AVA.
-            cls_conf = bbox[5:]
+        cls_conf = bbox[5:]
 
         # rescale bbox
         x1, x2 = int(x1 * orig_w), int(x2 * orig_w)
@@ -83,10 +85,11 @@ def multi_hot_vis(args, frame, out_bboxes, orig_w, orig_h, class_names, act_pose
         indices = list(indices[0])
         scores = list(scores)
 
+        if len(indices) > 1:
+            indices = [value for value in indices if value != 0]
+
         if len(scores) > 0:
-            # draw bbox
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            # draw text
             blk = np.zeros(frame.shape, np.uint8)
             font = cv2.FONT_HERSHEY_SIMPLEX
             coord = []
@@ -94,11 +97,12 @@ def multi_hot_vis(args, frame, out_bboxes, orig_w, orig_h, class_names, act_pose
             text_size = []
 
             for _, cls_ind in enumerate(indices):
+
                 text.append("[{:.2f}] ".format(scores[_]) + str(class_names[cls_ind]))
                 text_size.append(cv2.getTextSize(text[-1], font, fontScale=0.5, thickness=1)[0])
                 coord.append((x1 + 3, y1 + 14 + 20 * _))
                 cv2.rectangle(blk, (coord[-1][0] - 1, coord[-1][1] - 12),
-                              (coord[-1][0] + text_size[-1][0] + 1, coord[-1][1] + text_size[-1][1] - 4), (0, 255, 0),
+                              (coord[-1][0] + text_size[-1][0] + 1, coord[-1][1] + text_size[-1][1] - 4), color_dict[cls_ind],
                               cv2.FILLED)
             frame = cv2.addWeighted(frame, 1.0, blk, 0.5, 1)
             for t in range(len(text)):
@@ -109,118 +113,72 @@ def multi_hot_vis(args, frame, out_bboxes, orig_w, orig_h, class_names, act_pose
 
 @torch.no_grad()
 def detect(args, model, device, transform, class_names, class_colors):
-    # path to save 
     save_path = os.path.join(args.save_folder, 'demo', 'videos')
     os.makedirs(save_path, exist_ok=True)
 
-    # path to video
     path_to_video = os.path.join(args.video)
 
-    # video
     video = cv2.VideoCapture(path_to_video)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    save_size = (960, 720)
+    save_size = (512, 512)
     save_name = os.path.join(save_path, 'detection.avi')
-    fps = 20.0
+    fps = 25.0
     out = cv2.VideoWriter(save_name, fourcc, fps, save_size)
 
-    # run
     video_clip = []
     image_list = []
     while True:
         ret, frame = video.read()
 
         if ret:
-            # to RGB
             frame_rgb = frame[..., (2, 1, 0)]
-            print(frame_rgb.shape)
 
-            # to PIL image
             frame_pil = Image.fromarray(frame_rgb.astype(np.uint8))
 
-            # prepare
-            if len(video_clip) <= 0:
-                for _ in range(args.len_clip):
-                    video_clip.append(frame_pil)
-
             video_clip.append(frame_pil)
-            del video_clip[0]
 
-            # orig size
+            if len(video_clip) <= 0:
+                continue
+                # for _ in range(args.len_clip):
+                #     video_clip.append(frame_pil)
+
             orig_h, orig_w = frame.shape[:2]
 
-            # transform
             x, _ = transform(video_clip)
-            # List [T, 3, H, W] -> [3, T, H, W]
             x = torch.stack(x, dim=1)
-            x = x.unsqueeze(0).to(device)  # [B, 3, T, H, W], B=1
+            x = x.unsqueeze(0).to(device)
 
             t0 = time.time()
-            # inference
             outputs = model(x)
             print("inference time ", time.time() - t0, "s")
 
-            # vis detection results
-            if args.dataset in ['ava_v2.2']:
-                batch_bboxes = outputs
-                # batch size = 1
-                bboxes = batch_bboxes[0]
-                # multi hot
-                frame = multi_hot_vis(
-                    args=args,
-                    frame=frame,
-                    out_bboxes=bboxes,
-                    orig_w=orig_w,
-                    orig_h=orig_h,
-                    class_names=class_names,
-                    act_pose=args.pose
-                )
-            elif args.dataset in ['ucf24']:
-                batch_scores, batch_labels, batch_bboxes = outputs
-                # batch size = 1
-                scores = batch_scores[0]
-                labels = batch_labels[0]
-                bboxes = batch_bboxes[0]
-                # rescale
-                bboxes = rescale_bboxes(bboxes, [orig_w, orig_h])
-                # one hot
-                frame = vis_detection(
-                    frame=frame,
-                    scores=scores,
-                    labels=labels,
-                    bboxes=bboxes,
-                    vis_thresh=args.vis_thresh,
-                    class_names=class_names,
-                    class_colors=class_colors
-                )
-            # save
+
+            batch_bboxes = outputs
+            bboxes = batch_bboxes[0]
+            frame = multi_hot_vis(
+                args=args,
+                frame=frame,
+                out_bboxes=bboxes,
+                orig_w=orig_w,
+                orig_h=orig_h,
+                class_names=class_names,
+                act_pose=args.pose
+            )
+
             frame_resized = cv2.resize(frame, save_size)
             out.write(frame_resized)
 
-            if args.gif:
-                gif_resized = cv2.resize(frame, (200, 150))
-                gif_resized_rgb = gif_resized[..., (2, 1, 0)]
-                image_list.append(gif_resized_rgb)
-
             if args.show:
-                # show
                 cv2.imshow('key-frame detection', frame)
                 cv2.waitKey(1)
 
+            video_clip.clear()
         else:
             break
 
     video.release()
     out.release()
     cv2.destroyAllWindows()
-
-    # generate GIF
-    if args.gif:
-        save_name = os.path.join(save_path, 'detect.gif')
-        print('generating GIF ...')
-        imageio.mimsave(save_name, image_list, fps=fps)
-        print('GIF done: {}'.format(save_name))
-
 
 if __name__ == '__main__':
     np.random.seed(100)
@@ -246,10 +204,8 @@ if __name__ == '__main__':
                      np.random.randint(255),
                      np.random.randint(255)) for _ in range(num_classes)]
 
-    # transform
     basetransform = BaseTransform(img_size=args.img_size)
 
-    # build model
     model, _ = build_model(
         args=args,
         d_cfg=d_cfg,
@@ -259,13 +215,10 @@ if __name__ == '__main__':
         trainable=False
     )
 
-    # load trained weight
     model = load_weight(model=model, path_to_ckpt=args.weight)
 
-    # to eval
     model = model.to(device).eval()
 
-    # run
     detect(args=args,
            model=model,
            device=device,

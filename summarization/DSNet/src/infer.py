@@ -1,4 +1,5 @@
 import cv2
+import ffmpeg
 import numpy as np
 import torch
 
@@ -37,30 +38,39 @@ def main():
 
     print('Writing summary video ...')
 
-    # load original video
-    cap = cv2.VideoCapture(args.source)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
+    nb_frames = np.count_nonzero(pred_summ)
 
-    # create summary video writer
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(args.save_path, fourcc, fps, (width, height))
+    if nb_frames > 0:
 
-    frame_idx = 0
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+        cap = cv2.VideoCapture(args.source)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
 
-        if pred_summ[frame_idx]:
-            out.write(frame)
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(args.save_path, fourcc, fps, (width, height))
 
-        frame_idx += 1
+        frame_idx = 0
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-    out.release()
-    cap.release()
+            if pred_summ[frame_idx]:
+                out.write(frame)
 
+            frame_idx += 1
+
+        out.release()
+        cap.release()
+
+        input_video = args.save_path
+        output_video = args.save_path
+
+        ffmpeg.input(input_video).output(output_video, vcodec='libx264').run(r"C:\Users\chang\Downloads\ffmpeg\bin\ffmpeg.exe", overwrite_output=True)
+
+    else:
+        print('No video created')
 
 if __name__ == '__main__':
     main()

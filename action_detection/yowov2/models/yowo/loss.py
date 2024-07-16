@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .matcher import SimOTA
-from ...utils.box_ops import get_ious
-from ...utils.distributed_utils import get_world_size, is_dist_avail_and_initialized
+from action_detection.yowov2.utils.box_ops import get_ious
+from action_detection.yowov2.utils.distributed_utils import get_world_size, is_dist_avail_and_initialized
 
 
 class SigmoidFocalLoss(object):
