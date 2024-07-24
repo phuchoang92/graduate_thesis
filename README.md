@@ -34,6 +34,9 @@ Have action detection + fisheye undistortion
 
 ## Checkpoints weight link
 
-To get all model checkpoint weights this [google drive link](https://drive.google.com/drive/folders/1RUF1I7gAgMsfmC_r-dnWh2eam_HG5ELP?usp=sharing)
+To get all model checkpoint weights, use this [google drive link](https://drive.google.com/drive/folders/1RUF1I7gAgMsfmC_r-dnWh2eam_HG5ELP?usp=sharing)
 
+## Dataset link
+
+All dataset is stored in this [google drive link](https://drive.google.com/drive/folders/1y_pVVUCDIS2TUUg5HtRzMJw-ZrVT7OOZ?usp=sharing)
 
